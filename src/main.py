@@ -4,7 +4,7 @@ Command line runner for the Music Recommender Simulation.
 Run from the project root with:  python -m src.main
 """
 
-from src.recommender import load_songs, recommend_songs
+from src.recommender import MAX_SCORE, load_songs, recommend_songs
 
 PROFILES = {
     "Pop / Happy (default)": {
@@ -28,6 +28,35 @@ PROFILES = {
         "valence": 0.48,
         "acousticness": 0.10,
     },
+    # Adversarial / edge-case profiles, designed to probe the scoring logic
+    "Adversarial: Sad but Energetic": {
+        "genre": "blues",
+        "mood": "melancholic",
+        "energy": 0.90,
+        "valence": 0.20,
+        "acousticness": 0.10,
+    },
+    "Adversarial: Split Taste (gym + study)": {
+        "genre": "rock",
+        "mood": "chill",
+        "energy": 0.65,
+        "valence": 0.55,
+        "acousticness": 0.45,
+    },
+    "Adversarial: Genre Not In Catalog": {
+        "genre": "k-pop",
+        "mood": "euphoric",
+        "energy": 0.85,
+        "valence": 0.90,
+        "acousticness": 0.10,
+    },
+    "Adversarial: Out-of-Range Energy": {
+        "genre": "pop",
+        "mood": "happy",
+        "energy": 3.0,
+        "valence": 0.80,
+        "acousticness": 0.20,
+    },
 }
 
 WIDTH = 64
@@ -41,7 +70,7 @@ def print_recommendations(name: str, user_prefs: dict, recommendations: list) ->
 
     for rank, (song, score, explanation) in enumerate(recommendations, start=1):
         print(f"\n{rank}. {song['title']} by {song['artist']}")
-        print(f"   Score: {score:.2f} / 7.00   [{song['genre']}, {song['mood']}]")
+        print(f"   Score: {score:.2f} / {MAX_SCORE:.2f}   [{song['genre']}, {song['mood']}]")
         for reason in explanation.split("; "):
             print(f"     - {reason}")
     print()

@@ -235,11 +235,26 @@ User profile: Intense Rock
 
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
+### Weight shift: double energy, halve genre
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+I changed `GENRE_WEIGHT` from 2.0 to 1.0 and the energy weight from 2.0 to 4.0, then compared the top 5 for each profile against the baseline. The maximum score rose from 7.0 to 8.0, and `MAX_SCORE` is now computed from the weights so the printed "/ max" stays correct. Every song's score is still a sum of non-negative terms, so the math stays valid for inputs inside the 0 to 1 range. I reverted to the baseline weights afterwards.
+
+| Profile | Baseline top 3 | Energy x2, genre /2 top 3 |
+|---|---|---|
+| Pop / Happy | Sunrise City, Gym Hero, Rooftop Lights | Sunrise City, Rooftop Lights, Gym Hero |
+| Chill Lofi | Midnight Coding, Library Rain, Focus Flow | unchanged |
+| Intense Rock | Storm Runner, Gym Hero, Night Drive Loop | Storm Runner, Gym Hero, Iron Tide |
+| Sad but Energetic | Cold Harbor Blues, Iron Tide, Storm Runner | Iron Tide, Storm Runner, Cold Harbor Blues |
+| Split Taste | Storm Runner, Midnight Coding, Library Rain | Midnight Coding, Storm Runner, Library Rain |
+
+**More accurate or just different?** Mostly more accurate, with a cost.
+
+- **Better:** the happy listener now gets Rooftop Lights (happy) before Gym Hero (intense). The rock listener's Iron Tide jumps from fifth to third. For the sad-but-energetic listener, Iron Tide (loud and dark) now beats Cold Harbor Blues (quiet), because a genre match no longer outweighs a big energy gap.
+- **Worse or just different:** with energy dominating, songs that are merely close on energy start to crowd in regardless of label. Night Drive Loop (synthwave, moody) enters the Pop / Happy top 5. In the Split Taste case the swap between Midnight Coding and Storm Runner is close to a coin flip, since both are about 0.25 away from the energy target.
+- **Fragile:** in Sad but Energetic the top three scores are 5.66, 5.54 and 5.51. A tiny weight change can reorder them.
+- **Lofi unchanged:** the lofi listener's list didn't move, because those songs already match on every feature.
+
+Other experiments still to try: removing the mood check, adding tempo or danceability to the score, and clamping the closeness score so out-of-range targets can't go negative.
 
 ---
 

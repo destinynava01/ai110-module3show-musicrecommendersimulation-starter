@@ -5,6 +5,7 @@ from dataclasses import dataclass
 GENRE_WEIGHT = 2.0
 MOOD_WEIGHT = 1.0
 NUMERIC_WEIGHTS = {"energy": 2.0, "valence": 1.5, "acousticness": 0.5}
+MAX_SCORE = GENRE_WEIGHT + MOOD_WEIGHT + sum(NUMERIC_WEIGHTS.values())
 
 @dataclass
 class Song:
