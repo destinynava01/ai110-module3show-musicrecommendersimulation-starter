@@ -21,16 +21,18 @@ Prompts:
 
 ## 3. How the Model Works  
 
-Explain your scoring approach in simple language.  
+Think of the recommender as a judge who gives every song in the catalog a score out of 7 for how well it fits one listener, then hands back the five highest.
 
-Prompts:  
+The listener is described by a short taste profile: a favorite genre, a favorite mood, and three target "feel" levels from 0 to 1. Those are how energetic the music is, how positive or upbeat it sounds (valence), and how acoustic versus electronic it is.
 
-- What features of each song are used (genre, energy, mood, etc.)  
-- What user preferences are considered  
-- How does the model turn those into a score  
-- What changes did you make from the starter logic  
+For each song, the judge awards points in two ways:
 
-Avoid code here. Pretend you are explaining the idea to a friend who does not program.
+- **Matching labels.** A song earns 2 points if its genre is the listener's favorite and 1 point if its mood is. It is all or nothing, so "close" does not count, and a "metal" song gets no genre credit for a "rock" listener.
+- **Closeness on the feel levels.** For energy, valence, and acousticness, the judge looks at how far the song is from the listener's target, not whether the number is high or low. A song that lands exactly on the target earns full points, and the points shrink the further away it is. Energy is worth up to 2 points, valence up to 1.5, and acousticness up to 0.5.
+
+The points add up to the song's score. The judge also writes down each reason as it goes (for example "genre match (+2.0)"), so every recommendation comes with an explanation. Finally, all songs are sorted from highest score to lowest and the top five are shown.
+
+Compared to the starter, which had no working logic, I added the valence and acousticness targets, weighted genre above mood after testing both orders on a lofi listener and a rock listener, and added the written reasons.
 
 ---
 
