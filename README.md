@@ -11,13 +11,13 @@ Your goal is to:
 - Evaluate what your system gets right and wrong
 - Reflect on how this mirrors real world AI recommenders
 
-Replace this paragraph with your own summary of what your version does.
+My version, VibeMatch 1.0, is a small content-based music recommender that runs in the terminal. It loads an 18-song catalog from `data/songs.csv` and compares each song to a listener's taste profile: a favorite genre, a favorite mood, and target levels for energy, valence, and acousticness. Each song gets a score out of 7, with a written reason for every point. The five highest-scoring songs are printed in order. I tested it on seven profiles, including four adversarial ones, ran one weight experiment, and documented the results and biases in the model card.
 
 ---
 
 ## How The System Works
 
-Real-world recommenders such as Spotify or YouTube combine two kinds of signals. Collaborative filtering learns from what millions of other listeners play, skip, and save, while content-based filtering compares the attributes of the songs themselves to what a listener already likes. My version is a small content-based recommender: it has no listening history or other users, so it can only compare a song's attributes to a stated taste profile. It prioritizes the "vibe" of a song over its label. Energy and valence (how positive a song sounds) carry the most weight, followed by an exact mood match. Genre is only a small bonus, because a listener's mood usually says more about what they want right now than a genre tag does.
+Real-world recommenders such as Spotify or YouTube combine two kinds of signals. Collaborative filtering learns from what millions of other listeners play, skip, and save, while content-based filtering compares the attributes of the songs themselves to what a listener already likes. My version is a small content-based recommender: it has no listening history or other users, so it can only compare a song's attributes to a stated taste profile. It tries to capture the "vibe" of a song with numbers. Energy and genre carry the most weight (2.0 points each), followed by valence (how positive a song sounds, up to 1.5 points), an exact mood match (1.0), and acoustic feel (up to 0.5). I first weighted mood above genre, but testing on a lofi and a rock listener gave better lists with genre weighted higher, so I switched.
 
 ### Song features
 
@@ -30,13 +30,15 @@ Each `Song` has these attributes from `data/songs.csv`:
 
 ### UserProfile features
 
-Each `UserProfile` stores the user's taste targets:
+A listener's taste profile is a dictionary (see `PROFILES` in `src/main.py`) with these keys:
 
-- `favorite_genre` (string)
-- `favorite_mood` (string)
-- `target_energy` (0-1)
-- `target_valence` (0-1)
-- `target_acousticness` (0-1), which replaces the starter's `likes_acoustic` boolean so acoustic taste can be compared on the same scale as the song data
+- `genre` (string)
+- `mood` (string)
+- `energy` (0-1 target)
+- `valence` (0-1 target)
+- `acousticness` (0-1 target), a number instead of the starter's `likes_acoustic` yes/no, so acoustic taste can be compared on the same scale as the song data
+
+The starter's `UserProfile` dataclass in `src/recommender.py` is left as it was, because the starter tests use it. The simulation itself runs on the dictionaries above.
 
 ### Algorithm Recipe
 
@@ -56,11 +58,11 @@ The maximum score is 7.0. I tested genre 2.0 / mood 1.0 against the reverse (moo
 
 #### Ranking rule (the whole catalog)
 
-The `Recommender` applies the scoring rule to every song, sorts the songs by score from highest to lowest, and returns the top `k`.
+`recommend_songs` applies the scoring rule to every song, sorts the songs by score from highest to lowest, and returns the top `k`.
 
 ### Expected biases
 
-- **Genre may be over-prioritized.** A genre match is worth 2.0 points, the most of any single feature besides energy. A song in the "wrong" genre that matches the user's mood and energy exactly can still lose to a same-genre song that is a worse fit. For example, Iron Tide (metal, angry, energy 0.97) ranks only fifth for an intense rock listener, behind a pop song, because "metal" does not equal "rock".
+- **Genre may be over-prioritized.** A genre match is worth 2.0 points, tied with energy for the largest weight. A song in the "wrong" genre that matches the user's mood and energy closely can still lose to a same-genre song that is a worse fit. For example, Iron Tide (metal, angry, energy 0.97) ranks only fifth for an intense rock listener, because "metal" does not equal "rock".
 - **Exact-match labels are brittle.** Mood and genre score 1 or 0, so near-synonyms (intense/angry, chill/relaxed/focused) get no partial credit.
 - **The catalog skews toward lofi.** Lofi has three of the 18 songs and most other genres have one, so lofi listeners get more good matches than anyone else.
 - **One profile means one taste.** A listener who likes both gym rock and study lofi can only be represented by a single set of targets, and averaging them would favor mid-energy songs that neither mood wants.
@@ -78,6 +80,7 @@ The `Recommender` applies the scoring rule to every song, sorts the songs by sco
    python -m venv .venv
    source .venv/bin/activate      # Mac or Linux
    .venv\Scripts\activate         # Windows
+   ```
 
 2. Install dependencies
 
@@ -254,34 +257,45 @@ I changed `GENRE_WEIGHT` from 2.0 to 1.0 and the energy weight from 2.0 to 4.0, 
 - **Fragile:** in Sad but Energetic the top three scores are 5.66, 5.54 and 5.51. A tiny weight change can reorder them.
 - **Lofi unchanged:** the lofi listener's list didn't move, because those songs already match on every feature.
 
-Other experiments still to try: removing the mood check, adding tempo or danceability to the score, and clamping the closeness score so out-of-range targets can't go negative.
+### Diversity penalty (Challenge 3)
+
+`recommend_songs` now re-ranks greedily. It picks the best song, then charges every remaining song **1.0 point for each earlier pick by the same artist** and **0.5 points for each earlier pick in the same genre** before choosing the next one. The penalty shows up as a reason line (for example `artist already picked 1x (-1.0)`). Pass `diversity=False` to get the plain ranking. I chose 1.0 and 0.5 after trying 1.0 and 1.0 as well. The stronger genre penalty pushed Focus Flow out of the lofi listener's top five completely, which is too much for a listener who really does want lofi.
+
+| Profile | Plain top 5 | With diversity penalty |
+|---|---|---|
+| Chill Lofi | Midnight Coding, Library Rain, Focus Flow, Spacewalk Thoughts, Coffee Shop Stories | Midnight Coding, Library Rain, **Spacewalk Thoughts, Focus Flow**, Coffee Shop Stories |
+| Split Taste | Storm Runner, Midnight Coding, Library Rain, Spacewalk Thoughts, Velvet Hours | Storm Runner, Midnight Coding, **Spacewalk Thoughts, Velvet Hours, Library Rain** |
+| Genre Not In Catalog | Laser Garden, Sunrise City, Gym Hero, Rooftop Lights, Concrete Crown | Laser Garden, Sunrise City, **Rooftop Lights, Concrete Crown, Storm Runner** |
+| Pop / Happy, Intense Rock, Sad but Energetic | | same songs in the same order (Gym Hero's score drops from 5.62 to 5.12 for Pop / Happy) |
+
+**What it fixed and what it didn't.** It breaks up the lofi listener's block of three lofi songs, so an ambient song now comes third, and it stops LoRoom's two songs from sitting side by side. It does not fix the one-song-genre problem, because a single song can't repeat. It also costs a little accuracy: Library Rain drops from third to fifth for the Split Taste listener only because of its genre. The diversity penalty only works inside one list, so the same middle-of-the-road songs (like Concrete Crown) still show up for many different listeners.
+
+The sample outputs below and in the model card were captured **before** this penalty was added, so they match `diversity=False`. Running `python -m src.main` now gives the diversity-adjusted lists above.
+
+Other experiments still to try: removing the mood check, adding tempo or danceability to the score, and partial credit for similar moods and genres. (Rejecting out-of-range targets was added afterwards. See the model card.)
 
 ---
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
+- **Tiny catalog.** There are only 18 songs, and 12 of the 15 genres have a single song. A listener of one of those genres almost automatically gets that song first, and the same middle-of-the-road songs fill the lower spots for everyone.
+- **Exact-match labels.** Genre and mood score 1 or 0, so "angry" and "intense" or "rock" and "metal" count as unrelated. Iron Tide, a loud metal song, only ranks fifth for an intense rock listener.
+- **Labels can beat the sound.** Genre is worth 2.0 points, so a quiet blues song beat loud, dark songs for a listener who asked for high energy and low positivity.
+- **One taste per profile.** A listener who likes both gym rock and study lofi can only be described by a single set of targets.
+- **Input checks are minimal.** Numeric targets outside 0 to 1 are now rejected with an error (they used to give negative scores). Other bad input, like a misspelled genre, is still accepted and just earns no genre points.
+- **Limited features.** It does not understand lyrics, language, artist, or listening context, and the song numbers are made up, not measured.
 
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
-
-You will go deeper on this in your model card.
+The full discussion is in [`model_card.md`](model_card.md).
 
 ---
 
 ## Reflection
 
-Read and complete `model_card.md`:
+The full model card is here: [**Model Card**](model_card.md)
 
-[**Model Card**](model_card.md)
+**How recommenders turn data into predictions.** A recommender like this one turns taste into numbers, then ranks songs by how close they are to those numbers. A few weighted rules and a sort were enough to give lists that felt like real recommendations, and the "because" lines made them feel even smarter than they are. The system never understands the music. It only adds up points. Small weight changes also moved real songs up and down, so the weights are really design choices.
 
-Write 1 to 2 paragraphs here about what you learned:
-
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
+**Where bias or unfairness could show up.** Bias came from the choices I made, not from any bad intent. Giving genre a big weight, using exact-match labels, and keeping a tiny catalog meant some listeners got better results than others. Listeners of rare genres were locked to one song, and listeners with mixed tastes could not be described at all. In a real app the same kind of bias would grow, because popular songs and common tastes would keep winning and everyone else would see less variety.
 
 
 

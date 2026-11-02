@@ -2,20 +2,34 @@
 
 ## 1. Model Name  
 
-Give your model a short, descriptive name.  
-Example: **VibeFinder 1.0**  
+**VibeMatch 1.0**
+
+A small, explainable music recommender that runs in the terminal.
 
 ---
 
 ## 2. Intended Use  
 
-Describe what your recommender is designed to do and who it is for. 
+**Goal:** VibeMatch suggests songs that fit one listener's taste. It gives a top five list. Each song comes with the reasons for its score.
 
-Prompts:  
+**Intended use:**
 
-- What kind of recommendations does it generate  
-- What assumptions does it make about the user  
-- Is this for real users or classroom exploration  
+- Classroom learning about how recommenders work.
+- Trying out scoring rules and seeing how the results change.
+- Explaining why a song was recommended.
+
+**Assumptions about the user:**
+
+- They can describe their taste with one genre, one mood, and three target levels.
+- The levels are energy, positivity (valence), and acoustic feel.
+- Their taste stays the same from one moment to the next.
+
+**Not intended for:**
+
+- Real music apps or real listeners.
+- Judging artists or deciding what gets played.
+- Anyone with mixed tastes, because a profile only holds one set of targets.
+- Large catalogs. The scoring was only checked on 18 songs.
 
 ---
 
@@ -38,39 +52,27 @@ Compared to the starter, which had no working logic, I added the valence and aco
 
 ## 4. Data  
 
-Describe the dataset the model uses.  
-
-Prompts:  
-
-- How many songs are in the catalog  
-- What genres or moods are represented  
-- Did you add or remove data  
-- Are there parts of musical taste missing in the dataset  
+- The catalog is `data/songs.csv`. It has 18 songs.
+- The starter file had 10 songs. I added 8 more with new genres and moods.
+- Each song has a title, artist, genre, mood, and five numbers. The numbers are energy, tempo, valence, danceability, and acousticness.
+- There are 15 genres. Lofi has 3 songs and pop has 2. The other 13 genres have 1 song each.
+- There are 14 moods. Chill has 3 songs, happy and intense have 2 each, and the rest have 1 each.
+- The numbers are made up. I picked them to feel right for each genre. They are not measured from real songs.
+- Tempo and danceability are in the file but not used in the score.
+- Missing: lyrics, language, artist fame, and how a listener feels at a given moment.
 
 ---
 
 ## 5. Strengths  
 
-Where does your system seem to work well  
-
-Prompts:  
-
-- User types for which it gives reasonable results  
-- Any patterns you think your scoring captures correctly  
-- Cases where the recommendations matched your intuition  
+- It works well for clear tastes. Chill Lofi and Intense Rock got lists that matched my gut.
+- Calm and intense listeners get completely different lists. They share no songs.
+- Every result comes with its reasons, so it is easy to see why a song ranked where it did.
+- It handles a missing genre without crashing. It falls back on mood and sound.
 
 ---
 
 ## 6. Limitations and Bias 
-
-Where the system struggles or behaves unfairly. 
-
-Prompts:  
-
-- Features it does not consider  
-- Genres or moods that are underrepresented  
-- Cases where the system overfits to one preference  
-- Ways the scoring might unintentionally favor some users  
 
 **Weakness found in experiments: exact genre matching creates a filter bubble in a tiny catalog.** Genre is worth 2.0 points and only an exact string match earns them, but 12 of the 15 genres in the 18-song catalog have just one song. A listener whose genre has a single song gets that song at number one almost automatically, and a listener of the three-song lofi group gets their whole top three filled by lofi before any other genre appears (Focus Flow scores 5.97, while the next best non-lofi song scores 4.57). The "Sad but Energetic" test shows the cost: the quiet blues song (energy 0.39) beat the loud, dark songs that sound like the request, because its genre and mood labels were worth 3.0 points. The energy gap also treats users unevenly. Only one song sits within 0.15 of an energy target of 0.1, against six or seven songs near targets of 0.3 to 0.7, so listeners with very quiet or very loud tastes see fewer good options.
 
@@ -78,16 +80,7 @@ Prompts:
 
 ## 7. Evaluation  
 
-How you checked whether the recommender behaved as expected. 
-
-Prompts:  
-
-- Which user profiles you tested  
-- What you looked for in the recommendations  
-- What surprised you  
-- Any simple tests or comparisons you ran  
-
-No need for numeric metrics unless you created some.
+I checked the recommender by running different listener profiles, comparing their lists, and trying one weight experiment (written up in the README).
 
 ### Profiles tested
 
@@ -103,7 +96,7 @@ What I looked for was simple: does each listener get songs that sound like what 
 - **The same few songs kept turning up.** Gym Hero, Storm Runner, and Concrete Crown (a middle-of-the-road hip hop song) each appeared in the top five for four of the seven profiles. Concrete Crown did so without ever matching anyone's genre or mood. With only 18 songs, the "average" ones fill the lower spots for everybody.
 - **A label could beat the actual sound.** The sad-but-energetic listener asked for loud music, but a quiet blues song won, because matching its genre and mood earned more points than being close in energy.
 - **Pop / Happy ranked an intense workout song above a happy one.** More on that below.
-- **A bad input did not crash anything.** The out-of-range energy profile simply produced negative scores, and no warning was shown.
+- **A bad input was accepted without any warning.** The out-of-range energy profile simply produced negative scores. I fixed this afterwards: the recommender now rejects targets outside 0 to 1 with a clear error.
 
 ### Why does "Gym Hero" keep showing up for people who just want Happy Pop?
 
@@ -117,7 +110,7 @@ Think of the system as a judge handing out points. A listener who says "pop, hap
 - **Intense Rock vs. Sad but Energetic.** Four of the five songs are the same (Storm Runner, Iron Tide, Night Drive Loop, Concrete Crown), because both listeners want loud and not-so-cheerful music. The differences are that Cold Harbor Blues (a quiet blues song) jumps to number one for the sad listener because its genre and mood labels match, and Gym Hero drops out, because it is too cheerful for someone who wants positivity near 0.2. This is partly right (the cheerful song should go) and partly wrong (a quiet song should not win a request for loud music).
 - **Chill Lofi vs. Split Taste.** Three songs overlap (Midnight Coding, Library Rain, Spacewalk Thoughts), because the split listener asked for "chill" and those songs match that mood. The split listener also gets Storm Runner at number one and Velvet Hours, a medium-energy r&b song, because their energy target of 0.65 sits between calm and loud. The list is a blend of the two tastes, which makes sense, although it comes from the labels more than from the middle-range numbers.
 - **Pop / Happy vs. Genre Not In Catalog.** The same five songs appear in both lists, but in a different order. The k-pop listener has no genre to match, so nobody gets the 2 genre points, and Laser Garden (euphoric, very upbeat) wins over Sunrise City. That is valid: with no genre to match, the system falls back on mood and sound and returns the closest-sounding songs, which are the same bright pop-like songs. It never tells the listener that no k-pop exists.
-- **Pop / Happy vs. Out-of-Range Energy.** The top three songs are in the same order (Sunrise City, Gym Hero, Rooftop Lights), because the ranking only depends on which songs are closest to the target, and the same songs are still closest. Only the scores change: the loudest songs end up with negative totals. This shows the order can still be sensible even when the numbers are not, but it also shows the system should reject or clamp impossible inputs.
+- **Pop / Happy vs. Out-of-Range Energy.** The top three songs are in the same order (Sunrise City, Gym Hero, Rooftop Lights), because the ranking only depends on which songs are closest to the target, and the same songs are still closest. Only the scores change: the loudest songs end up with negative totals. This shows the order can still be sensible even when the numbers are not, but it also showed the system should reject impossible inputs, which it now does.
 
 Overall, the profiles test what I meant them to test: calm vs. intense (energy, acousticness), cheerful vs. dark (valence), and label matching vs. actual sound (the genre and mood bonuses). The system separates the clear cases well. It is weakest when a label and the sound disagree, and the results there are more a product of how I chose the weights than of what a listener would call a good match.
 
@@ -298,30 +291,31 @@ User profile: Adversarial: Out-of-Range Energy
      - acousticness 0.10 vs target 0.20 (+0.45)
 ```
 
-**What happened:** a target energy of 3.0 is outside the 0 to 1 scale, and the closeness formula `1 - |song - target|` goes negative, so songs get negative scores (-0.30 and -0.71 in the top five). The order is still sensible, but the scores are meaningless. The input is never validated or clamped.
+**What happened:** a target energy of 3.0 is outside the 0 to 1 scale, and the closeness formula `1 - |song - target|` goes negative, so songs get negative scores (-0.30 and -0.71 in the top five). The order is still sensible, but the scores are meaningless. The input was never validated. **Fixed afterwards:** `recommend_songs` now raises an error for targets outside 0 to 1, and `main.py` prints "Profile rejected: energy target must be between 0 and 1, got 3.0" for this profile. The output above is from before the fix.
 
 
 ---
 
 ## 8. Future Work  
 
-Ideas for how you would improve the model next.  
-
-Prompts:  
-
-- Additional features or preferences  
-- Better ways to explain recommendations  
-- Improving diversity among the top results  
-- Handling more complex user tastes  
+1. **Give partial credit for similar labels.** Right now "angry" and "intense" count as unrelated, and so do "rock" and "metal". A small table of related moods and genres would fix cases like Iron Tide ranking fifth for a rock fan.
+2. **Check more of the input.** Targets outside 0 to 1 are now rejected. A next step is to warn when a genre or mood is not in the catalog, instead of silently giving no points.
+3. **Add more songs and more variety.** A bigger catalog would end the one-song-per-genre problem. A rule that limits repeats of one artist or genre would add variety.
+4. **Support more than one taste.** Let a listener save a few profiles, like "gym" and "study".
 
 ---
 
 ## 9. Personal Reflection  
 
-A few sentences about your experience.  
+**Biggest learning moment.** Weights are choices, and the choices change who wins. I first guessed that mood should count more than genre. Then I ran both versions on a lofi listener and a rock listener. Genre-heavy gave better lists, so I switched. Later I doubled energy and halved genre, and the happy listener finally got a happy song ahead of Gym Hero. A small number change moved real songs up and down. That showed me a recommender is a set of opinions written as math.
 
-Prompts:  
+**How AI helped, and when I double-checked it.** AI helped me move fast. It suggested the closeness formula, wrote the CSV loader and the scoring function, and drafted the profiles and the write-ups. But I checked it in a few places:
 
-- What you learned about recommender systems  
-- Something unexpected or interesting you discovered  
-- How this changed the way you think about music recommendation apps  
+- I ran the code instead of trusting it. `python -m src.main`, the command the README gives, failed with an import error until I fixed the import in `main.py`. The tests also could not run until `pytest` was installed.
+- I checked its advice against data. The first weight suggestion looked fine on paper, and the test showed a better option.
+- The 8 songs it generated have made-up numbers. They are plausible, but they are not real measurements.
+- The out-of-range energy profile showed that the code never validated input. It happily gave negative scores. I added a check that rejects those targets.
+
+**What surprised me.** A few additions and a sort felt like a real recommender. The top song for a chill lofi listener was exactly what I would have picked. The "because" lines made it feel even smarter than it is. It was also odd to see how a wrong label can fool it. Gym Hero keeps appearing for happy pop fans, because "pop" earns more points than "happy". The system is not thinking about the music at all. It only adds up points.
+
+**What I would try next.** First, partial credit for similar moods and genres, so "angry" and "intense" count as close. Second, input checks. Third, a bigger catalog so one-song genres stop locking the top spot. Fourth, profiles that can hold two tastes, like gym and study. I would also try adding tempo and danceability to the score and see if the lists feel better or just different.

@@ -81,7 +81,14 @@ def main() -> None:
     print(f"Loaded songs: {len(songs)}\n")
 
     for name, user_prefs in PROFILES.items():
-        recommendations = recommend_songs(user_prefs, songs, k=5)
+        try:
+            recommendations = recommend_songs(user_prefs, songs, k=5)
+        except ValueError as error:
+            print("=" * WIDTH)
+            print(f"User profile: {name}")
+            print("=" * WIDTH)
+            print(f"\nProfile rejected: {error}\n")
+            continue
         print_recommendations(name, user_prefs, recommendations)
 
 
